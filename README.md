@@ -121,7 +121,7 @@ The z-score measures how unusual the current spread is compared with its recent 
 
 The larger the absolute z-score, the further the relationship has moved away from its recent average.
 
-![Rolling Z-Score](Figure_1.png)
+![Rolling Z-Score](https://raw.githubusercontent.com/ayaanw4zir/statistical-arbitrage-backtester/7bfd0e93e8247cc4220315fdffd809ffc79b6e3a/Figure_1.png)
 
 The dashed lines show the `+3` and `-3` entry levels for the most selective threshold tested.
 
@@ -184,13 +184,13 @@ The `3.0` threshold performed best during this particular 2023-2025 test period.
 
 The graph below shows the growth of £1 for the `3.0` threshold. Flat periods occur when the strategy has no open position.
 
-![Cumulative Returns](Figure_2.png)
+![Cumulative Returns](https://raw.githubusercontent.com/ayaanw4zir/statistical-arbitrage-backtester/7bfd0e93e8247cc4220315fdffd809ffc79b6e3a/Figure_2.png)
 
 ### Drawdown
 
 Drawdown shows how far the strategy is below its previous highest portfolio value. A value of `0` means the strategy is at a peak, while negative values show a fall from that peak.
 
-![Drawdown](Figure_3.png)
+![Drawdown](https://raw.githubusercontent.com/ayaanw4zir/statistical-arbitrage-backtester/7bfd0e93e8247cc4220315fdffd809ffc79b6e3a/Figure_3.png)
 
 ## Comparison with buy and hold
 
@@ -204,7 +204,7 @@ I also compare the strategy with simply buying and holding Visa and Mastercard o
 
 Buy-and-hold produced much higher total returns and higher Sharpe ratios during this period, while the pairs strategy had a much smaller maximum drawdown.
 
-![Strategy vs Buy and Hold](Figure_4.png)
+![Strategy vs Buy and Hold](https://raw.githubusercontent.com/ayaanw4zir/statistical-arbitrage-backtester/7bfd0e93e8247cc4220315fdffd809ffc79b6e3a/Figure_4.png)
 
 ## Libraries used
 
