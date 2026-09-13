@@ -1,123 +1,146 @@
 # Statistical Arbitrage Backtester
 
-I built this project to learn more about pairs trading and how statistical methods can be used to test relationships between stocks.
+I built this project to learn how pairs trading works and how statistical methods can be used to test whether two stocks have a relationship that may be suitable for mean-reversion trading.
 
-The current version uses Visa (`V`) and Mastercard (`MA`) and tests whether changes in the relationship between their prices can be used to generate trading signals.
+The current version uses Visa (`V`) and Mastercard (`MA`).
 
-## How it works
+## Project idea
 
-The program downloads historical stock data from 2018 to 2025 using `yfinance` and then calculates daily percentage returns for both stocks.
+Pairs trading focuses on the **relationship between two stocks** rather than trying to predict whether one stock will simply go up or down.
 
-I split the data into:
+If two stocks usually move together, but their relationship temporarily moves far away from normal, the strategy assumes that the difference may later move back towards its usual level.
 
-- Training data: 2018 to 2022
-- Test data: 2023 to 2025
+The program:
 
-The training period is used to study the relationship between the two stocks. The test period is kept separate so that the trading strategy can be tested on later data rather than being built using the same period it is evaluated on.
+- downloads historical stock prices
+- measures the relationship between Visa and Mastercard
+- tests whether their spread appears mean-reverting
+- creates rolling z-score trading signals
+- tests several entry thresholds
+- includes transaction costs
+- measures return, Sharpe ratio and drawdown
+- compares the strategy with buying and holding each stock
 
-### 1. Correlation
+## Data
 
-The program first calculates the correlation between the daily returns of Visa and Mastercard.
+Historical closing prices are downloaded using `yfinance` from 2018 to the end of 2025.
 
-Correlation measures how closely two variables move together. A value close to `1` means the two stocks often move in the same direction, while a value close to `0` means there is much less of a relationship between their daily movements.
+The data is split into:
 
-A high correlation can make a pair worth investigating, but correlation by itself does not mean that the price relationship is stable over the long term.
+- **Training period:** 2018-2022
+- **Test period:** 2023-2025
 
-### 2. OLS regression and the spread
+The training period is used for the initial statistical tests. The later period is then used to test how the strategy would have performed on data that was not part of those initial tests.
 
-I use Ordinary Least Squares (OLS) regression to model Visa as a function of Mastercard:
+## Measuring the relationship
+
+### Correlation
+
+I calculate the correlation between the daily returns of Visa and Mastercard.
+
+Correlation measures how closely two variables move together. A value close to `1` means their daily movements are strongly related, while a value closer to `0` means there is less of a relationship.
+
+Visa and Mastercard have a high return correlation of approximately `0.91`, which makes them a reasonable pair to investigate further.
+
+Correlation alone is not enough for pairs trading because two stocks can move together in the short term without having a stable long-term price relationship.
+
+### OLS regression
+
+I use Ordinary Least Squares regression to estimate the relationship between the two prices:
 
 ```text
 A = alpha + beta * B
 ```
 
-Where:
+where:
 
-- `A` is Visa
-- `B` is Mastercard
-- `alpha` is the constant part of the relationship
-- `beta` measures how strongly A changes relative to B
+- `A` = Visa
+- `B` = Mastercard
+- `alpha` = constant part of the relationship
+- `beta` = how strongly A changes relative to B
 
-The regression gives an expected value for Visa based on Mastercard's price.
+The regression gives an estimated Visa price based on Mastercard's price.
 
-The spread is then calculated as:
+The difference between the actual price and the estimated price is the **spread**:
 
 ```text
 spread = actual A - predicted A
 ```
 
-If the spread is positive, Visa is trading above the value suggested by the regression. If the spread is negative, Visa is trading below it.
+A positive spread means Visa is above the level suggested by the regression, while a negative spread means it is below it.
 
-The strategy is based on the idea that if this spread moves unusually far away from its normal level, it may later move back towards that level.
+## Testing for mean reversion
 
-### 3. Stationarity and cointegration
+### ADF test
 
-I use the Augmented Dickey-Fuller (ADF) test on the training spread.
+The Augmented Dickey-Fuller test is applied to the training spread to test whether it appears **stationary**.
 
-A stationary spread is one that tends to move around a relatively stable level instead of drifting further and further away over time. This is useful for a mean-reversion strategy because the strategy assumes that large changes in the spread may eventually reverse.
+A stationary spread tends to move around a relatively stable level rather than continuously drifting away. This is important because the trading strategy relies on the idea that unusually large movements in the spread may eventually reverse.
 
-I also use an Engle-Granger cointegration test on the two stock prices.
+The training spread produced an ADF p-value of approximately `0.0016`.
 
-Cointegration checks whether two price series appear to have a stable long-term relationship even if both prices individually trend over time.
+### Cointegration test
 
-For both tests, the p-value is important. A low p-value gives evidence against the null hypothesis, so a low cointegration p-value supports the idea that the two stocks have a long-term relationship.
+I also use an Engle-Granger cointegration test on Visa and Mastercard prices.
 
-### 4. Rolling regression
+Cointegration tests whether two price series appear to share a stable long-term relationship, even if the individual stock prices themselves trend over time.
 
-The relationship between two companies can change over time, so I do not use one fixed alpha and beta for the whole test period.
+The cointegration p-value was approximately `0.0078`, providing evidence of a long-term relationship during the training period.
 
-For every date in the test data, the program takes the previous 60 trading days and runs another OLS regression.
+## Rolling model
 
-This creates a rolling `alpha` and `beta` for each date.
+The relationship between two stocks may change over time, so I do not keep one fixed alpha and beta throughout the test period.
 
-The current date is excluded from this 60-day regression window, so the model only uses information that would already have been available before that day.
+For each date in the test period, the program takes the **previous 60 trading days** and runs another OLS regression.
 
-The test spread is then calculated using:
+This produces a rolling alpha and beta for each date.
+
+The current date is excluded from the regression window, so the model only uses information that would have already been available at that point.
+
+The test spread is calculated as:
 
 ```text
 spread = A - (alpha + beta * B)
 ```
 
-Because alpha and beta are updated over time, the spread can adapt to changes in the Visa-Mastercard relationship.
+## Rolling z-score
 
-### 5. Rolling z-score
+The program calculates the rolling mean and standard deviation of the spread over 60 trading days.
 
-The program calculates a 60-day rolling mean and standard deviation of the spread.
-
-It then calculates the z-score:
+The z-score is then:
 
 ```text
 z-score = (spread - rolling mean) / rolling standard deviation
 ```
 
-The z-score tells me how unusual the current spread is compared with its recent history.
+The z-score measures how unusual the current spread is compared with its recent history.
 
-For example:
+- `0` means the spread is close to its recent average
+- `+2` means it is about two standard deviations above its recent average
+- `-2` means it is about two standard deviations below its recent average
 
-- a z-score near `0` means the spread is close to its recent average
-- a z-score of `+2` means the spread is about two standard deviations above its recent average
-- a z-score of `-2` means it is about two standard deviations below its recent average
-
-The larger the absolute z-score, the more unusual the current relationship is.
+The larger the absolute z-score, the further the relationship has moved away from its recent average.
 
 ![Rolling Z-Score](Figure_1.png)
 
-The dashed lines at `+3` and `-3` show the entry level for the most selective threshold tested.
+The dashed lines show the `+3` and `-3` entry levels for the most selective threshold tested.
 
-## Trading rules
+## Trading strategy
 
-The strategy tests entry thresholds of `1.5`, `2.0`, `2.5` and `3.0`.
+The strategy tests entry thresholds of:
+
+```text
+1.5, 2.0, 2.5, 3.0
+```
 
 For each threshold:
 
-- if the z-score is above the entry threshold, the strategy shorts the spread
-- if the z-score is below the negative entry threshold, the strategy goes long the spread
-- if the absolute z-score falls below `0.5`, the position is closed
-- otherwise, the previous position is kept
+- z-score above the threshold -> **short the spread**
+- z-score below the negative threshold -> **long the spread**
+- absolute z-score below `0.5` -> **close the position**
+- otherwise -> **keep the previous position**
 
-A long spread position means the strategy is expecting the spread to rise back towards normal. A short spread position means the strategy is expecting the spread to fall back towards normal.
-
-The program stores positions as:
+Positions are stored as:
 
 ```text
 1 = long spread
@@ -125,56 +148,61 @@ The program stores positions as:
 0 = no position
 ```
 
-The trading signal is shifted forward by one day so that a signal calculated using today's prices is applied to the following day's return rather than the same day's return.
+A long spread position expects the spread to rise back towards normal, while a short spread position expects it to fall back towards normal.
 
-The daily pair return is calculated using the hedge ratio from the rolling regression:
+The daily pair return is calculated using the rolling hedge ratio:
 
 ```text
 pair return = return of A - beta * return of B
 ```
 
-I also include a transaction cost of `0.1%` whenever the position changes.
+The trading signal is shifted forward by one day so that a signal calculated using today's prices is applied to the following day's return.
+
+A transaction cost of `0.1%` is also applied whenever the position changes.
 
 ## Performance measures
 
-For each threshold, the program calculates:
+For each threshold I calculate:
 
-- **Cumulative return** - the total compounded return over the test period
-- **Sharpe ratio** - average return compared with the volatility of those returns
+- **Cumulative return** - total compounded return over the test period
+- **Sharpe ratio** - return relative to the volatility of those returns
 - **Maximum drawdown** - the largest fall from a previous portfolio peak
-- **Position changes** - how often the strategy changed its trading position
+- **Position changes** - how often the strategy changed position
+
+### Threshold results
+
+| Entry threshold | Cumulative return | Sharpe ratio | Maximum drawdown | Position changes |
+| --- | ---: | ---: | ---: | ---: |
+| 1.5 | -4.20% | -0.15 | -12.47% | 44 |
+| 2.0 | -3.02% | -0.13 | -12.56% | 27 |
+| 2.5 | -2.20% | -0.14 | -10.17% | 17 |
+| 3.0 | **+5.90%** | **0.55** | **-3.58%** | **9** |
+
+The `3.0` threshold performed best during this particular 2023-2025 test period. The lower thresholds entered more frequently and produced negative returns.
 
 ### Cumulative returns
 
-This graph shows the growth of £1 using the `3.0` entry threshold. Flat sections are periods where the strategy has no open position.
+The graph below shows the growth of £1 for the `3.0` threshold. Flat periods occur when the strategy has no open position.
 
 ![Cumulative Returns](Figure_2.png)
 
 ### Drawdown
 
-Drawdown measures how far the strategy is below its previous highest portfolio value. A value of `0` means the strategy is at a new peak, while negative values show a decline from that peak.
+Drawdown shows how far the strategy is below its previous highest portfolio value. A value of `0` means the strategy is at a peak, while negative values show a fall from that peak.
 
 ![Drawdown](Figure_3.png)
 
-## Results
+## Comparison with buy and hold
 
-For Visa and Mastercard, the `3.0` threshold performed best during the 2023-2025 test period.
+I also compare the strategy with simply buying and holding Visa and Mastercard over the same test period.
 
-It produced approximately:
+| Investment | Cumulative return | Sharpe ratio | Maximum drawdown |
+| --- | ---: | ---: | ---: |
+| Pairs strategy | +5.90% | 0.55 | -3.58% |
+| Visa | +72.97% | 1.08 | -15.01% |
+| Mastercard | +67.53% | 1.01 | -16.73% |
 
-- 5.9% cumulative return
-- 0.55 Sharpe ratio
-- -3.6% maximum drawdown
-
-The lower thresholds traded more frequently and produced negative returns in this test period.
-
-I also compare the strategy with simply buying and holding Visa and Mastercard over the same period.
-
-Buy-and-hold produced much higher returns and higher Sharpe ratios, while the pairs strategy had a much smaller maximum drawdown.
-
-### Strategy vs Buy and Hold
-
-The graph below compares the growth of £1 in the pairs strategy with simply buying and holding Visa or Mastercard over the same test period.
+Buy-and-hold produced much higher total returns and higher Sharpe ratios during this period, while the pairs strategy had a much smaller maximum drawdown.
 
 ![Strategy vs Buy and Hold](Figure_4.png)
 
