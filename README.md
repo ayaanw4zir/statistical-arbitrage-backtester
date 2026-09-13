@@ -100,6 +100,10 @@ For example:
 
 The larger the absolute z-score, the more unusual the current relationship is.
 
+![Rolling Z-Score](Figure_1.png)
+
+The dashed lines at `+3` and `-3` show the entry level for the most selective threshold tested.
+
 ## Trading rules
 
 The strategy tests entry thresholds of `1.5`, `2.0`, `2.5` and `3.0`.
@@ -140,7 +144,17 @@ For each threshold, the program calculates:
 - **Maximum drawdown** - the largest fall from a previous portfolio peak
 - **Position changes** - how often the strategy changed its trading position
 
-The program also creates graphs for the rolling z-score, cumulative strategy returns and drawdown.
+### Cumulative returns
+
+This graph shows the growth of £1 using the `3.0` entry threshold. Flat sections are periods where the strategy has no open position.
+
+![Cumulative Returns](Figure_2.png)
+
+### Drawdown
+
+Drawdown measures how far the strategy is below its previous highest portfolio value. A value of `0` means the strategy is at a new peak, while negative values show a decline from that peak.
+
+![Drawdown](Figure_3.png)
 
 ## Results
 
@@ -157,6 +171,12 @@ The lower thresholds traded more frequently and produced negative returns in thi
 I also compare the strategy with simply buying and holding Visa and Mastercard over the same period.
 
 Buy-and-hold produced much higher returns and higher Sharpe ratios, while the pairs strategy had a much smaller maximum drawdown.
+
+### Strategy vs Buy and Hold
+
+The graph below compares the growth of £1 in the pairs strategy with simply buying and holding Visa or Mastercard over the same test period.
+
+![Strategy vs Buy and Hold](Figure_4.png)
 
 ## Libraries used
 
