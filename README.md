@@ -1,99 +1,81 @@
 # Statistical Arbitrage Backtester
 
-A Python pairs-trading backtester that tests whether two related stocks show a mean-reverting relationship and evaluates a simple long-short trading strategy.
+I built this project to learn more about pairs trading and how statistical methods can be used to test relationships between stocks.
 
-The current example uses Visa (`V`) and Mastercard (`MA`).
+The current version uses Visa (`V`) and Mastercard (`MA`) and tests whether changes in the relationship between their prices can be used to generate trading signals.
 
-## Overview
+## How it works
 
-The project:
+The program downloads historical stock data from 2018 to 2025 using `yfinance`.
 
-- downloads historical stock data using `yfinance`
-- measures the correlation between the two stocks
-- splits the data into training and test periods to reduce look-ahead bias
-- uses OLS regression to estimate the relationship between the two stocks
-- tests the training spread using the Augmented Dickey-Fuller test and an Engle-Granger cointegration test
-- recalculates rolling alpha and beta values using the previous 60 trading days
-- creates rolling z-score trading signals
-- tests several entry thresholds
-- includes transaction costs
-- evaluates cumulative return, Sharpe ratio and maximum drawdown
-- compares the strategy with buy-and-hold benchmarks
+I split the data into:
 
-## Data Split
+- Training data: 2018 to 2022
+- Test data: 2023 to 2025
 
-Historical prices are downloaded from 2018 to the end of 2025.
+The training data is used to test the relationship between the two stocks, while the later data is used to test the trading strategy.
 
-- Training period: 2018-01-01 to 2022-12-31
-- Test period: 2023-01-01 to 2025-12-31
-
-The training period is used for the initial statistical tests, while strategy performance is evaluated on the later test period.
-
-## Strategy Logic
-
-The regression models stock A as a function of stock B:
+I use OLS regression to model the relationship:
 
 ```text
 A = alpha + beta * B
 ```
 
-The spread is the difference between the actual value of A and the value predicted by the regression.
+The difference between the actual price of A and the price predicted by the regression creates the spread.
 
-During the test period, alpha and beta are recalculated using the previous 60 trading days. A rolling z-score then measures how far the current spread is from its recent mean.
+I then use:
 
-Trading rules:
+- correlation to see how closely the stocks move together
+- the ADF test to check whether the spread is stationary
+- a cointegration test to check for a long-term relationship between the two stocks
 
-- z-score above the entry threshold: short the spread
-- z-score below the negative entry threshold: long the spread
-- absolute z-score below 0.5: close the position
-- otherwise: keep the previous position
+During the test period, the regression is recalculated using the previous 60 trading days so that alpha and beta can change over time.
 
-Signals are shifted forward by one day so that a signal calculated using today's prices is applied to the following day's return.
+A rolling z-score is then used to measure how far the spread is from its recent average.
 
-## Threshold Testing
+## Trading rules
 
-The backtester compares entry thresholds of:
+The strategy tests entry thresholds of `1.5`, `2.0`, `2.5` and `3.0`.
 
-```text
-1.5, 2.0, 2.5, 3.0
-```
+- if the z-score is above the entry threshold, the strategy shorts the spread
+- if the z-score is below the negative entry threshold, the strategy goes long the spread
+- if the z-score returns within `0.5` of zero, the position is closed
+- otherwise, the previous position is kept
 
-For each threshold it reports:
+The signal is shifted by one day so that today's signal is applied to the next day's return.
+
+I also included a simple transaction cost whenever the position changes.
+
+## Results
+
+For each threshold, the program calculates:
 
 - cumulative return
 - Sharpe ratio
 - maximum drawdown
 - number of position changes
 
-In the current V/MA test period, the 3.0 threshold was the strongest of the tested thresholds, while lower thresholds traded more frequently and produced negative returns. This result is specific to this sample and should not be treated as a universally optimal parameter.
+For Visa and Mastercard, the `3.0` threshold performed best during the 2023-2025 test period.
 
-## Benchmarking
+It produced approximately:
 
-The strategy is also compared with buy-and-hold performance for both stocks over the same test period.
+- 5.9% cumulative return
+- 0.55 Sharpe ratio
+- -3.6% maximum drawdown
 
-This comparison provides context, although a long-short pairs strategy has a different risk profile from simply holding either stock.
+The strategy is also compared with simply buying and holding Visa and Mastercard over the same period.
 
-## Limitations
+Buy-and-hold produced much higher returns, but the pairs strategy had a much smaller maximum drawdown.
 
-This is a simplified educational backtester. In particular:
+## Libraries used
 
-- the pair-return calculation is a simplified hedge-ratio return rather than a fully capital-normalised portfolio
-- transaction costs are charged when the position changes, but not for smaller rebalancing caused by changes in the rolling hedge ratio
-- results are based on historical data and do not imply future profitability
-- testing several thresholds on the same test period can introduce parameter-selection bias
+- Python
+- pandas
+- NumPy
+- Matplotlib
+- statsmodels
+- yfinance
 
-## Requirements
+## Notes
 
-Install the required libraries with:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Run
-
-```bash
-python Main.py
-```
-
-The script prints the main statistical tests, threshold results and benchmark metrics, and displays plots for the rolling z-score, cumulative returns, drawdown and the strategy versus buy-and-hold benchmarks.
+This is a simplified backtester and was built as a learning project. The results are based on historical data and do not mean the strategy would make money in the future.
