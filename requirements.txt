@@ -1,5 +1,0 @@
-yfinance
-statsmodels
-pandas
-numpy
-matplotlib
