@@ -208,7 +208,6 @@ Buy-and-hold produced much higher total returns and higher Sharpe ratios during 
 
 ## Libraries used
 
-- Python
 - pandas
 - NumPy
 - Matplotlib
